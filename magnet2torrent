@@ -1,0 +1,63 @@
+#!/usr/bin/env python2
+
+import sys
+import os
+import time
+import tempfile
+import shutil
+import libtorrent
+import ipdb
+
+USAGE = """
+magnet2torrent - translate a magnet link to a torrent file and save it to disk
+
+usage:  magnet2torrent [magnet link] [download path]
+"""
+
+TEST = "magnet:?xt=urn:btih:62963b2339045ad22c47ea4da23bca6c0cff5e4f&dn=The+Thick+Of+It+Season+1%2C+2+%26+3+%2B+Extras+%28Extra+episodes%29+DVDRip&tr=udp%3A%2F%2Ftracker.openbittorrent.com%3A80&tr=udp%3A%2F%2Ftracker.publicbt.com%3A80&tr=udp%3A%2F%2Ftracker.istole.it%3A6969&tr=udp%3A%2F%2Ftracker.ccc.de%3A80"
+
+if __name__ == '__main__':
+	try:
+		sys.argv.append(TEST)
+		sys.argv.append(os.getcwd())
+	
+	except NameError:
+		pass
+
+	try:
+		magnet = sys.argv[1]
+		
+		try:
+			path = sys.argv[2]
+		
+		except IndexError:
+			path = os.getcwd()
+	
+	except IndexError:
+		print(USAGE)	
+		sys.exit(1)
+	
+	temp_dir = tempfile.mkdtemp(prefix='magnet2torrent')
+
+	session = libtorrent.session()
+	handle = session.add_torrent({'save_path':temp_dir, 'url':magnet})
+	
+	done = False
+
+	while (not done):
+		try:
+			info = handle.get_torrent_info()
+			done = True
+		except RuntimeError:
+			time.sleep(1)
+
+	torrent = libtorrent.create_torrent(info)
+	data = libtorrent.bencode(torrent.generate())
+
+	#ipdb.set_trace()
+
+	file_name = '%s/%s.torrent' % (path, info.name())
+	with open(file_name, 'wb') as f:
+		f.write(data)
+
+	shutil.rmtree(temp_dir)
